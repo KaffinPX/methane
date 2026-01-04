@@ -1489,6 +1489,7 @@ dependencies = [
  "anyhow",
  "neptune-privacy",
  "rustyline",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

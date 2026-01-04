@@ -89,6 +89,10 @@ impl Prover {
                 .await
                 .ok()
                 .unwrap();
+            info!(
+                "JSON dump of upgraded tx: \n{}",
+                serde_json::to_string_pretty(&upgraded_tx).unwrap()
+            );
 
             match client.submit_transaction(upgraded_tx).await {
                 Ok(response) => {
