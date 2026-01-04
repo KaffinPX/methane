@@ -1,0 +1,13 @@
+[package]
+name = "methane"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+tokio = { version = "1.45.1", features = ["full", "tracing"] }
+neptune-privacy = { git = "https://github.com/neptuneprivacy/xnt-core.git", rev = "3d1fa3eada8a8081f69174286a9185b8b2950770" }
+xnt-rpc-client = { git = "https://github.com/neptuneprivacy/xnt-core.git", rev = "3d1fa3eada8a8081f69174286a9185b8b2950770" }
+rustyline = "17.0.2"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
