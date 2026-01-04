@@ -93,7 +93,8 @@ impl Tasks {
     }
 
     pub fn forget(&mut self, id: &RpcTransactionKernelId) {
-        self.transactions.remove(id);
-        info!("Transaction {} is no longer upgradable.", id);
+        if self.transactions.remove(id).is_some() {
+            info!("Transaction {} is no longer upgradable.", id);
+        }
     }
 }
