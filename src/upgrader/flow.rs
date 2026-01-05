@@ -41,7 +41,7 @@ impl Upgrader {
     pub async fn scan_mempool(&self) {
         let tip = self.client.tip_kernel().await.unwrap().kernel;
         let tx_ids = self.client.transactions().await.unwrap().transactions;
-        info!("Currently there is {} txs on mempool.", tx_ids.len());
+        let mut tasks_guard = self.txs.write().await;
 
         for id in tx_ids {
             let proof = self.client.get_transaction_proof(id).await.unwrap().proof;
@@ -58,10 +58,10 @@ impl Upgrader {
                     };
 
                     let transaction = RpcTransaction { kernel, proof };
-                    self.txs.write().await.record(id, transaction, tip.clone());
+                    tasks_guard.record(id, transaction, tip.clone());
                 }
                 RpcTransactionProof::SingleProof(_) => {
-                    self.txs.write().await.forget(&id);
+                    tasks_guard.forget(&id);
                 }
             }
         }
