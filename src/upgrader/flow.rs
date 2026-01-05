@@ -5,6 +5,7 @@ use neptune_privacy::application::json_rpc::core::{
     model::wallet::transaction::{RpcTransaction, RpcTransactionProof},
 };
 use tokio::sync::RwLock;
+use tracing::{info, warn};
 use xnt_rpc_client::http::HttpClient;
 
 use crate::upgrader::{prover::Prover, tasks::Tasks};
@@ -40,10 +41,12 @@ impl Upgrader {
     pub async fn scan_mempool(&self) {
         let tip = self.client.tip_kernel().await.unwrap().kernel;
         let tx_ids = self.client.transactions().await.unwrap().transactions;
+        info!("Currently there is {} txs on mempool.", tx_ids.len());
 
         for id in tx_ids {
             let proof = self.client.get_transaction_proof(id).await.unwrap().proof;
             let Some(proof) = proof else {
+                warn!("Proof of transaction {id} not found.");
                 continue;
             };
 
