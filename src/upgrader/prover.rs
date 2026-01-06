@@ -56,11 +56,11 @@ impl Prover {
     async fn cleanup_finished_task(&self) {
         let mut current = self.current_task.write().await;
 
-        if let Some(task) = current.as_ref() {
-            if task.handle.is_finished() {
-                let finished = current.take().unwrap();
-                let _ = finished.handle.await;
-            }
+        if let Some(task) = current.as_ref()
+            && task.handle.is_finished()
+        {
+            let finished = current.take().unwrap();
+            let _ = finished.handle.await;
         }
     }
 
