@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
 
     info!("Initializing methane, the proof upgrader...");
 
-    let client = HttpClient::new("http://45.149.206.49:8080");
+    let client = HttpClient::new("http://2.tcp.eu.ngrok.io:10856");
     let upgrader = Upgrader::new(client);
 
     upgrader.main_loop().await;
