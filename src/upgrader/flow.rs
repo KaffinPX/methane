@@ -5,7 +5,7 @@ use neptune_privacy::application::json_rpc::core::{
     model::wallet::transaction::{RpcTransaction, RpcTransactionProof},
 };
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::warn;
 use xnt_rpc_client::http::HttpClient;
 
 use crate::upgrader::{prover::Prover, tasks::Tasks};
@@ -37,11 +37,9 @@ impl Upgrader {
             self.prover.check_jobs().await;
         }
     }
-
     pub async fn scan_mempool(&self) {
         let tip = self.client.tip_kernel().await.unwrap().kernel;
         let tx_ids = self.client.transactions().await.unwrap().transactions;
-        let mut tasks_guard = self.txs.write().await;
 
         for id in tx_ids {
             let proof = self.client.get_transaction_proof(id).await.unwrap().proof;
@@ -54,14 +52,15 @@ impl Upgrader {
                 RpcTransactionProof::ProofCollection(_) => {
                     let kernel = self.client.get_transaction_kernel(id).await.unwrap().kernel;
                     let Some(kernel) = kernel else {
+                        warn!("Kernel of transaction {id} not found.");
                         continue;
                     };
 
                     let transaction = RpcTransaction { kernel, proof };
-                    tasks_guard.record(id, transaction, tip.clone());
+                    self.txs.write().await.record(id, transaction, tip.clone());
                 }
                 RpcTransactionProof::SingleProof(_) => {
-                    tasks_guard.forget(&id);
+                    self.txs.write().await.forget(&id);
                 }
             }
         }

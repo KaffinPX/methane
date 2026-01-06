@@ -44,39 +44,54 @@ impl Prover {
     }
 
     pub async fn check_jobs(&self) {
-        let mut task_guard = self.current_task.write().await;
+        self.cleanup_finished_task().await;
 
-        if let Some(task) = task_guard.as_ref() {
-            if task.handle.is_finished() {
-                let finished = task_guard.take().unwrap();
-                let _ = finished.handle.await;
-            }
-        }
-
-        if let Some(task) = task_guard.as_ref() {
-            let still_valid = {
-                let txs = self.tasks.read().await;
-                txs.has(&task.transaction_id)
-            };
-
-            if !still_valid {
-                info!(
-                    "Cancelling upgrading of transaction {}...",
-                    task.transaction_id
-                );
-
-                task.handle.abort();
-                task_guard.take();
-            }
-
+        if self.has_active_task().await {
             return;
         }
 
-        let candidate = {
-            let txs = self.tasks.read().await;
-            txs.best_candidate().cloned()
+        self.start_next_task().await;
+    }
+
+    async fn cleanup_finished_task(&self) {
+        let mut current = self.current_task.write().await;
+
+        if let Some(task) = current.as_ref() {
+            if task.handle.is_finished() {
+                let finished = current.take().unwrap();
+                let _ = finished.handle.await;
+            }
+        }
+    }
+
+    async fn has_active_task(&self) -> bool {
+        let current = self.current_task.read().await;
+
+        let Some(task) = current.as_ref() else {
+            return false;
         };
-        let Some(tx_task) = candidate else {
+
+        let transaction_id = task.transaction_id;
+        let tasks = self.tasks.read().await;
+        let is_valid = tasks.has(&transaction_id);
+
+        if !is_valid {
+            info!("Cancelling upgrading of transaction {}...", transaction_id);
+            drop(tasks);
+            drop(current);
+
+            let mut current = self.current_task.write().await;
+            if let Some(task) = current.take() {
+                task.handle.abort();
+            }
+        }
+
+        true
+    }
+
+    async fn start_next_task(&self) {
+        let tasks = self.tasks.read().await;
+        let Some(tx_task) = tasks.best_candidate().cloned() else {
             return;
         };
 
@@ -89,10 +104,6 @@ impl Prover {
                 .await
                 .ok()
                 .unwrap();
-            info!(
-                "JSON dump of upgraded tx: \n{}",
-                serde_json::to_string_pretty(&upgraded_tx).unwrap()
-            );
 
             match client.submit_transaction(upgraded_tx).await {
                 Ok(response) => {
@@ -107,7 +118,8 @@ impl Prover {
             }
         });
 
-        *task_guard = Some(ProverTask {
+        let mut current = self.current_task.write().await;
+        *current = Some(ProverTask {
             transaction_id: id,
             handle,
         });
